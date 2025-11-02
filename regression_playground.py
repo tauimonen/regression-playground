@@ -98,12 +98,12 @@ draw_axes()
 
 
 def add_point(event):
-    x_graph = X_MIN + (event.x - PADDING) / (CANVAS_WIDTH - 2 * PADDING) * (
-        X_MAX - X_MIN
-    )
-    y_graph = Y_MIN + (CANVAS_HEIGHT - PADDING - event.y) / (
-        CANVAS_HEIGHT - 2 * PADDING
-    ) * (Y_MAX - Y_MIN)
+    x_scale = (X_MAX - X_MIN) / (CANVAS_WIDTH - 2 * PADDING)
+    y_scale = (Y_MAX - Y_MIN) / (CANVAS_HEIGHT - 2 * PADDING)
+
+    x_graph = X_MIN + (event.x - PADDING) * x_scale
+    y_graph = Y_MIN + (CANVAS_HEIGHT - PADDING - event.y) * y_scale
+
     points.append((x_graph, y_graph))
     cx, cy = graph_to_canvas(x_graph, y_graph)
     canvas.create_oval(cx - 3, cy - 3, cx + 3, cy + 3, fill="blue", tags="points")
@@ -121,7 +121,7 @@ def finish(event):
     if len(points) < 2:
         return
 
-    X = np.array([p[0] for p in points]).reshape(-1, 1)  # single explanatory variable
+    X = np.array([p[0] for p in points]).reshape(-1, 1)
     Y = np.array([p[1] for p in points])
 
     # Add constant term for intercept
@@ -144,18 +144,23 @@ def finish(event):
     # Calculate VIF (for single variable it's always 1)
     vif = [variance_inflation_factor(X_const, i) for i in range(X_const.shape[1])]
 
-    # Display full statistics
+    # Round and display statistics
+    residuals_rounded = [round(float(r), 2) for r in residuals]
+    bse_rounded = [round(float(b), 2) for b in model.bse]
+    params_rounded = [round(float(p), 2) for p in model.params]
+    pvalues_rounded = [round(float(p), 3) for p in model.pvalues]
+
     info_label.config(
         text=(
-            f"Slope (β1) = {model.params[1]:.2f}\n"
-            f"Intercept (β0) = {model.params[0]:.2f}\n"
-            f"Residuals e_i = {residuals}\n"
+            f"Slope (β1) = {params_rounded[1]}\n"
+            f"Intercept (β0) = {params_rounded[0]}\n"
+            f"Residuals e_i = {residuals_rounded}\n"
             f"R² = {model.rsquared:.3f}\n"
             f"Adjusted R² = {model.rsquared_adj:.3f}\n"
-            f"P-values = {model.pvalues}\n"
+            f"P-values = {pvalues_rounded}\n"
             f"F-statistic = {model.fvalue:.2f}, p={model.f_pvalue:.3f}\n"
-            f"Standard Errors = {model.bse}\n"
-            f"VIF = {vif}"
+            f"Standard Errors = {bse_rounded}\n"
+            f"VIF = 1"
         )
     )
 
